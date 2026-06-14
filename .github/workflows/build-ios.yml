@@ -1,12 +1,15 @@
 name: Build iOS IPA
 
 on:
-  workflow_dispatch:  # Se activa manualmente
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-ios:
     runs-on: macos-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: Checkout código
@@ -24,50 +27,48 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Cache KMP / Konan
+      - name: Cache KMP Konan toolchain
         uses: actions/cache@v4
         with:
           path: ~/.konan
-          key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle*') }}
+          key: ${{ runner.os }}-konan-${{ hashFiles('**/libs.versions.toml', '**/*.gradle*') }}
           restore-keys: |
             ${{ runner.os }}-konan-
 
       - name: Dar permisos a gradlew
         run: chmod +x gradlew
 
-      - name: Compilar framework iOS (KMP)
-        run: ./gradlew :composeApp:assembleXCFramework
+      - name: Mostrar tareas Gradle disponibles (debug)
+        run: ./gradlew :composeApp:tasks --group="build" 2>&1 | head -80 || true
 
-      - name: Instalar CocoaPods
+      - name: Compilar framework iOS via Gradle (podInstall)
+        run: ./gradlew :composeApp:podInstall --stacktrace
+
+      - name: Verificar que existe iosApp.xcworkspace
         run: |
-          cd iosApp
-          pod install --repo-update
+          ls -la iosApp/
+          if [ ! -d "iosApp/iosApp.xcworkspace" ]; then
+            echo "No se encontró .xcworkspace, intentando pod install manual..."
+            cd iosApp
+            pod install --repo-update
+          else
+            echo "xcworkspace encontrado correctamente"
+          fi
 
-      - name: Build y exportar IPA (sin firma, para sideload)
+      - name: Mostrar versión de Xcode
+        run: xcodebuild -version
+
+      - name: Listar schemes disponibles
         run: |
-          cd iosApp
-          xcodebuild -workspace iosApp.xcworkspace \
-            -scheme iosApp \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath $RUNNER_TEMP/Goodtime.xcarchive \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            archive
-
-          xcodebuild -exportArchive \
-            -archivePath $RUNNER_TEMP/Goodtime.xcarchive \
-            -exportPath $RUNNER_TEMP/Goodtime \
-            -exportOptionsPlist exportOptions.plist
+          xcodebuild -workspace iosApp/iosApp.xcworkspace -list
 
       - name: Crear exportOptions.plist
         run: |
-          cat > $RUNNER_TEMP/exportOptions.plist << 'EOF'
+          cat > /tmp/exportOptions.plist << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -78,13 +79,46 @@ jobs:
               <string>automatic</string>
               <key>compileBitcode</key>
               <false/>
+              <key>thinning</key>
+              <string>&lt;none&gt;</string>
           </dict>
           </plist>
           EOF
+
+      - name: Build archive (sin firma real)
+        run: |
+          xcodebuild archive \
+            -workspace iosApp/iosApp.xcworkspace \
+            -scheme iosApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/Goodtime.xcarchive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            PROVISIONING_PROFILE="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            | xcpretty || true
+
+      - name: Empaquetar IPA manualmente desde el archive
+        run: |
+          PAYLOAD_DIR="$RUNNER_TEMP/Payload"
+          mkdir -p "$PAYLOAD_DIR"
+          
+          # Copiar el .app desde el archive
+          APP_PATH=$(find "$RUNNER_TEMP/Goodtime.xcarchive" -name "*.app" -maxdepth 5 | head -1)
+          echo "App encontrada en: $APP_PATH"
+          cp -r "$APP_PATH" "$PAYLOAD_DIR/"
+          
+          # Crear el IPA (es solo un zip con estructura Payload/)
+          cd "$RUNNER_TEMP"
+          zip -r Goodtime.ipa Payload/
+          echo "IPA creado en: $RUNNER_TEMP/Goodtime.ipa"
+          ls -lh "$RUNNER_TEMP/Goodtime.ipa"
 
       - name: Subir IPA como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: Goodtime-iOS
-          path: $RUNNER_TEMP/Goodtime/*.ipa
-          retention-days: 7
+          path: ${{ runner.temp }}/Goodtime.ipa
+          retention-days: 14
