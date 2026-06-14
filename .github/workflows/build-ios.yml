@@ -1,19 +1,22 @@
 name: Build iOS IPA
 
+# Silencia el aviso de Node.js 20 y fuerza Node 24 (variable confirmada por GitHub).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_dispatch:        # Se ejecuta manualmente desde la pestaña Actions
 
 jobs:
   build-ios:
-    runs-on: macos-latest   # Necesario: el proyecto exige el SDK de iOS 26 (Xcode 26)
-    timeout-minutes: 120     # La 1.ª compilación de Kotlin/Native para iOS tarda bastante
+    runs-on: macos-latest   # Runner M1 con Xcode 26 (obligatorio para este proyecto)
+    timeout-minutes: 120
 
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      # El proyecto usa objectVersion 77, IPHONEOS_DEPLOYMENT_TARGET 26.0 y un app icon
-      # "Liquid Glass" (.icon) -> requiere Xcode 26. Seleccionamos el más reciente estable.
+      # objectVersion 77 + deployment target 26.0 + app icon "Liquid Glass" => Xcode 26.
       - name: Seleccionar Xcode 26
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -25,9 +28,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # composeApp aplica el plugin com.android.application (compileSdk 36).
-      # Aunque solo queramos el framework iOS, Gradle CONFIGURA el target Android,
-      # y eso falla si la plataforma android-36 no está instalada. La instalamos.
+      # composeApp también es app de Android (compileSdk 36); Gradle configura ese target
+      # aunque solo queramos iOS, y falla si la plataforma android-36 no está instalada.
       - name: Instalar Android SDK platform 36
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -35,6 +37,19 @@ jobs:
           echo "sdkmanager -> $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" || true
+
+      # El runner M1 solo tiene 7 GB de RAM. Repartimos la memoria entre el daemon de
+      # Gradle y el de Kotlin/Native para que coexistan. Estas claves (en GRADLE_USER_HOME)
+      # tienen prioridad sobre las del repo, así no hay que tocar gradle.properties del proyecto.
+      - name: Ajustar memoria de Gradle / Kotlin/Native
+        run: |
+          mkdir -p ~/.gradle
+          cat > ~/.gradle/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+          kotlin.native.jvmArgs=-Xmx5g
+          EOF
+          echo "----- ~/.gradle/gradle.properties -----"
+          cat ~/.gradle/gradle.properties
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -57,22 +72,22 @@ jobs:
       - name: Dar permisos a gradlew
         run: chmod +x gradlew
 
-      # Diagnóstico: si algo falla, en el log queda claro qué Xcode/SDK/scheme hay.
       - name: Diagnóstico (Xcode, SDKs, schemes)
         run: |
           echo "===== Xcode ====="; xcodebuild -version
           echo "===== SDKs iOS ====="; xcodebuild -showsdks | grep -i ios || true
           echo "===== Schemes ====="; xcodebuild -project iosApp/iosApp.xcodeproj -list || true
 
-      # Compila el archive SIN firma. xcodebuild dispara la fase "Compile Kotlin
-      # Framework" del propio proyecto, que corre :composeApp:embedAndSignAppleFrameworkForXcode.
-      # Anulamos el equipo/firma del maintainer para que no intente provisioning.
-      - name: Build archive (sin firma, para sideload)
+      # CLAVE: -configuration Debug. El Release intenta una optimización LTO
+      # (devirtualización) que necesita >6 GB y revienta la memoria del runner.
+      # Debug se la salta -> compila bien. xcodebuild dispara la fase "Compile Kotlin
+      # Framework", que ahora corre linkDebugFrameworkIosArm64 en vez de Release.
+      - name: Build archive (Debug, sin firma, para sideload)
         run: |
           xcodebuild \
             -project iosApp/iosApp.xcodeproj \
             -scheme iosApp \
-            -configuration Release \
+            -configuration Debug \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/Goodtime.xcarchive" \
             archive \
@@ -84,8 +99,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER=""
 
-      # Un .ipa es solo un zip con la carpeta Payload/<App>.app dentro.
-      # El widget (GoodtimeInProgressExtension.appex) ya va embebido en PlugIns/.
+      # Un .ipa es solo un zip con Payload/<App>.app dentro. El widget ya va embebido.
       - name: Empaquetar IPA desde el archive
         run: |
           set -e
