@@ -192,11 +192,21 @@ val darkColorScheme =
 @Immutable
 data class CustomColorsPalette(
     val colors: List<Color> = listOf(Color.Unspecified),
+    /** A dark, muted red used for the timer text during the session end warning phase */
+    val endOfSessionWarningColor: Color = Color.Unspecified,
 )
 
 val LocalColorsPalette = staticCompositionLocalOf { CustomColorsPalette() }
 
 val LightColorsPalette =
-    CustomColorsPalette(lightPalette.map { Color(it.toColorInt()) })
+    CustomColorsPalette(
+        colors = lightPalette.map { Color(it.toColorInt()) },
+        // shown on dark surfaces (this palette is provided when the theme is dark)
+        endOfSessionWarningColor = Color(0xFF8E524B),
+    )
 val DarkColorsPalette =
-    CustomColorsPalette(darkPalette.map { Color(it.toColorInt()) })
+    CustomColorsPalette(
+        colors = darkPalette.map { Color(it.toColorInt()) },
+        // shown on light surfaces (this palette is provided when the theme is light)
+        endOfSessionWarningColor = Color(0xFF74423C),
+    )
