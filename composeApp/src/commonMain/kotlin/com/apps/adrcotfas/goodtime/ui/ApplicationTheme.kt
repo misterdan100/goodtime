@@ -74,3 +74,6 @@ fun MaterialTheme.getLabelColor(colorIndex: Int): Color {
 
 @Composable
 fun MaterialTheme.breakColor(): Color = MaterialTheme.getLabelColor(BREAK_COLOR_INDEX)
+
+@Composable
+fun MaterialTheme.endOfSessionWarningColor(): Color = localColorsPalette.endOfSessionWarningColor

@@ -23,6 +23,9 @@ import com.apps.adrcotfas.goodtime.bl.TimeProvider
 import com.apps.adrcotfas.goodtime.bl.TimerForegroundMonitor
 import com.apps.adrcotfas.goodtime.bl.TimerManager
 import com.apps.adrcotfas.goodtime.bl.TimerStateRestoration
+import com.apps.adrcotfas.goodtime.bl.notifications.SessionEndWarningHandler
+import com.apps.adrcotfas.goodtime.bl.notifications.SessionEndWarningNotifier
+import com.apps.adrcotfas.goodtime.bl.notifications.SoundPlayer
 import com.apps.adrcotfas.goodtime.data.local.LocalDataRepository
 import com.apps.adrcotfas.goodtime.data.settings.SettingsRepository
 import org.koin.core.qualifier.named
@@ -48,6 +51,18 @@ val timerManagerModule =
                 timerManager = get(),
                 timeProvider = get(),
                 getWith("TimerForegroundMonitor"),
+            )
+        }
+
+        single {
+            SessionEndWarningHandler(
+                timerManager = get(),
+                settingsRepo = get(),
+                soundPlayer = get<SoundPlayer>(),
+                timeProvider = get(),
+                notifier = getOrNull<SessionEndWarningNotifier>(),
+                coroutineScope = get(named(IO_SCOPE)),
+                log = getWith("SessionEndWarningHandler"),
             )
         }
     }

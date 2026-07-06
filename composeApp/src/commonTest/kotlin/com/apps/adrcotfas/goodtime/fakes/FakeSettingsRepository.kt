@@ -94,6 +94,21 @@ class FakeSettingsRepository(
             _settings.value.copy(breakFinishedSound = sound ?: ""),
         )
 
+    override suspend fun setSessionEndWarning(enabled: Boolean) =
+        _settings.emit(
+            _settings.value.copy(sessionEndWarning = enabled),
+        )
+
+    override suspend fun setSessionEndWarningMinutes(minutes: Int) =
+        _settings.emit(
+            _settings.value.copy(sessionEndWarningMinutes = minutes),
+        )
+
+    override suspend fun setSessionEndWarningSound(sound: String?) =
+        _settings.emit(
+            _settings.value.copy(sessionEndWarningSound = sound ?: ""),
+        )
+
     override suspend fun addUserSound(sound: SoundData) {
         val existingSounds = _settings.value.userSounds.toMutableSet()
         existingSounds.add(sound)

@@ -31,6 +31,7 @@ import com.apps.adrcotfas.goodtime.bl.getBaseTime
 import com.apps.adrcotfas.goodtime.bl.isActive
 import com.apps.adrcotfas.goodtime.bl.isBreak
 import com.apps.adrcotfas.goodtime.bl.isPaused
+import com.apps.adrcotfas.goodtime.bl.notifications.SessionEndWarningHandler
 import com.apps.adrcotfas.goodtime.common.InstallDateProvider
 import com.apps.adrcotfas.goodtime.common.Time
 import com.apps.adrcotfas.goodtime.data.local.LocalDataRepository
@@ -96,6 +97,8 @@ data class TimerMainUiState(
     val fullscreenMode: Boolean = false,
     val trueBlackMode: Boolean = true,
     val flashScreen: Boolean = false,
+    val sessionEndWarning: Boolean = false,
+    val sessionEndWarningMinutes: Int = 1,
     val dndDuringWork: Boolean = false,
     val sessionCountToday: Int = 0,
     val startOfToday: Long = 0,
@@ -109,7 +112,11 @@ class TimerViewModel(
     private val settingsRepo: SettingsRepository,
     private val localDataRepo: LocalDataRepository,
     private val installDateProvider: InstallDateProvider,
+    sessionEndWarningHandler: SessionEndWarningHandler,
 ) : ViewModel() {
+    /** Emits at the session end warning moment; used by the UI for the double screen flash. */
+    val sessionEndWarningFired = sessionEndWarningHandler.warningFired
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val timerUiState =
         timerManager.timerData.flatMapLatest {
@@ -145,7 +152,9 @@ class TimerViewModel(
                         old.uiSettings == new.uiSettings &&
                         old.isPro == new.isPro &&
                         old.showTutorial == new.showTutorial &&
-                        old.flashScreen == new.flashScreen
+                        old.flashScreen == new.flashScreen &&
+                        old.sessionEndWarning == new.sessionEndWarning &&
+                        old.sessionEndWarningMinutes == new.sessionEndWarningMinutes
                 }.collect {
                     val settings = it
                     val uiSettings = settings.uiSettings
@@ -159,6 +168,8 @@ class TimerViewModel(
                             fullscreenMode = uiSettings.fullscreenMode,
                             trueBlackMode = uiSettings.trueBlackMode,
                             flashScreen = settings.flashScreen,
+                            sessionEndWarning = settings.sessionEndWarning,
+                            sessionEndWarningMinutes = settings.sessionEndWarningMinutes,
                             dndDuringWork = uiSettings.dndDuringWork,
                             isPro = settings.isPro,
                             showTutorial = settings.showTutorial,

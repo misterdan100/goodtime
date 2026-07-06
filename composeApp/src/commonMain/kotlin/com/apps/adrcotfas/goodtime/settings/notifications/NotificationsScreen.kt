@@ -49,6 +49,10 @@ import goodtime_productivity.composeapp.generated.resources.settings_notificatio
 import goodtime_productivity.composeapp.generated.resources.settings_override_sound_profile_desc
 import goodtime_productivity.composeapp.generated.resources.settings_override_sound_profile_title
 import goodtime_productivity.composeapp.generated.resources.settings_screen_flash_title
+import goodtime_productivity.composeapp.generated.resources.settings_session_end_warning_desc
+import goodtime_productivity.composeapp.generated.resources.settings_session_end_warning_minutes
+import goodtime_productivity.composeapp.generated.resources.settings_session_end_warning_sound
+import goodtime_productivity.composeapp.generated.resources.settings_session_end_warning_title
 import goodtime_productivity.composeapp.generated.resources.settings_silent
 import goodtime_productivity.composeapp.generated.resources.settings_torch_desc
 import goodtime_productivity.composeapp.generated.resources.settings_torch_title
@@ -70,6 +74,7 @@ fun NotificationsScreen(onNavigateBack: () -> Boolean) {
     val isTorchAvailable = torchManager.isTorchAvailable()
     val workRingTone = toSoundData(settings.workFinishedSound)
     val breakRingTone = toSoundData(settings.breakFinishedSound)
+    val sessionEndWarningRingTone = toSoundData(settings.sessionEndWarningSound)
     val candidateRingTone = uiState.notificationSoundCandidate?.let { toSoundData(it) }
 
     val listState = rememberScrollState()
@@ -101,6 +106,31 @@ fun NotificationsScreen(onNavigateBack: () -> Boolean) {
                 subtitle = notificationSoundName(breakRingTone),
                 onClick = { viewModel.setShowSelectBreakSoundPicker(true) },
             )
+
+            CheckboxListItem(
+                title = stringResource(Res.string.settings_session_end_warning_title),
+                subtitle = stringResource(Res.string.settings_session_end_warning_desc),
+                checked = settings.sessionEndWarning,
+            ) {
+                viewModel.setSessionEndWarning(it)
+            }
+
+            if (settings.sessionEndWarning) {
+                SliderListItem(
+                    title = stringResource(Res.string.settings_session_end_warning_minutes),
+                    value = settings.sessionEndWarningMinutes,
+                    min = 1,
+                    max = 5,
+                    showValue = true,
+                    onValueChange = { viewModel.setSessionEndWarningMinutes(it) },
+                )
+
+                BetterListItem(
+                    title = stringResource(Res.string.settings_session_end_warning_sound),
+                    subtitle = notificationSoundName(sessionEndWarningRingTone),
+                    onClick = { viewModel.setShowSelectSessionEndWarningSoundPicker(true) },
+                )
+            }
 
             CheckboxListItem(
                 title = stringResource(Res.string.settings_override_sound_profile_title),
@@ -174,6 +204,17 @@ fun NotificationsScreen(onNavigateBack: () -> Boolean) {
                 },
                 onSave = { viewModel.setBreakFinishedSound(Json.encodeToString(it)) },
                 onDismiss = { viewModel.setShowSelectBreakSoundPicker(false) },
+            )
+        }
+        if (uiState.showSelectSessionEndWarningSoundPicker) {
+            NotificationSoundPickerDialog(
+                title = stringResource(Res.string.settings_session_end_warning_sound),
+                selectedItem = candidateRingTone ?: sessionEndWarningRingTone,
+                onSelected = {
+                    viewModel.setNotificationSoundCandidate(Json.encodeToString(it))
+                },
+                onSave = { viewModel.setSessionEndWarningSound(Json.encodeToString(it)) },
+                onDismiss = { viewModel.setShowSelectSessionEndWarningSoundPicker(false) },
             )
         }
     }

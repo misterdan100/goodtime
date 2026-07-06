@@ -54,6 +54,9 @@ class SettingsRepositoryImpl(
         val firstDayOfWeekKey = intPreferencesKey("firstDayOfWeekKey")
         val workFinishedSoundKey = stringPreferencesKey("workFinishedSoundKey")
         val breakFinishedSoundKey = stringPreferencesKey("breakFinishedSoundKey")
+        val sessionEndWarningKey = booleanPreferencesKey("sessionEndWarningKey")
+        val sessionEndWarningMinutesKey = intPreferencesKey("sessionEndWarningMinutesKey")
+        val sessionEndWarningSoundKey = stringPreferencesKey("sessionEndWarningSoundKey")
         val userSoundsKey = stringPreferencesKey("userSoundsKey")
         val vibrationStrengthKey = intPreferencesKey("vibrationStrengthKey")
         val enableTorchKey = booleanPreferencesKey("enableTorchKey")
@@ -119,6 +122,15 @@ class SettingsRepositoryImpl(
                     breakFinishedSound =
                         it[Keys.breakFinishedSoundKey]
                             ?: default.breakFinishedSound,
+                    sessionEndWarning =
+                        it[Keys.sessionEndWarningKey]
+                            ?: default.sessionEndWarning,
+                    sessionEndWarningMinutes =
+                        it[Keys.sessionEndWarningMinutesKey]
+                            ?: default.sessionEndWarningMinutes,
+                    sessionEndWarningSound =
+                        it[Keys.sessionEndWarningSoundKey]
+                            ?: default.sessionEndWarningSound,
                     userSounds =
                         it[Keys.userSoundsKey]?.let { u ->
                             json.decodeFromString<Set<SoundData>>(u)
@@ -236,6 +248,18 @@ class SettingsRepositoryImpl(
 
     override suspend fun setBreakFinishedSound(sound: String?) {
         dataStore.edit { it[Keys.breakFinishedSoundKey] = sound ?: "" }
+    }
+
+    override suspend fun setSessionEndWarning(enabled: Boolean) {
+        dataStore.edit { it[Keys.sessionEndWarningKey] = enabled }
+    }
+
+    override suspend fun setSessionEndWarningMinutes(minutes: Int) {
+        dataStore.edit { it[Keys.sessionEndWarningMinutesKey] = minutes }
+    }
+
+    override suspend fun setSessionEndWarningSound(sound: String?) {
+        dataStore.edit { it[Keys.sessionEndWarningSoundKey] = sound ?: "" }
     }
 
     override suspend fun addUserSound(sound: SoundData) {

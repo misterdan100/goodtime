@@ -43,6 +43,12 @@ interface SettingsRepository {
 
     suspend fun setBreakFinishedSound(sound: String?)
 
+    suspend fun setSessionEndWarning(enabled: Boolean)
+
+    suspend fun setSessionEndWarningMinutes(minutes: Int)
+
+    suspend fun setSessionEndWarningSound(sound: String?)
+
     suspend fun addUserSound(sound: SoundData)
 
     suspend fun removeUserSound(sound: SoundData)

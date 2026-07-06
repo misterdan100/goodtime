@@ -59,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -86,9 +87,12 @@ import com.apps.adrcotfas.goodtime.platform.isFDroid
 import com.apps.adrcotfas.goodtime.settings.permissions.getPermissionsState
 import com.apps.adrcotfas.goodtime.settings.permissions.rememberAlarmPermissionRequester
 import com.apps.adrcotfas.goodtime.settings.timerstyle.InitTimerStyle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.minutes
 
 @Composable
 fun MainScreen(
@@ -199,6 +203,43 @@ fun MainScreen(
             rememberUpdatedState(backgroundColor)
         }
 
+    // Double screen flash at the session end warning moment: two quick pulses
+    // of the same animation used by the end-of-session screen flash above.
+    val onSurfaceColor by rememberUpdatedState(MaterialTheme.colorScheme.onSurface)
+    val isFlashScreenEnabled by rememberUpdatedState(uiState.flashScreen)
+    var isWarningFlashActive by remember { mutableStateOf(false) }
+    val warningFlashProgress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        viewModel.sessionEndWarningFired.collectLatest {
+            if (!isFlashScreenEnabled) return@collectLatest
+            isWarningFlashActive = true
+            try {
+                warningFlashProgress.snapTo(0f)
+                repeat(2) {
+                    warningFlashProgress.animateTo(1f, tween(200, easing = FastOutLinearInEasing))
+                    warningFlashProgress.snapTo(0f)
+                    delay(200)
+                }
+            } finally {
+                isWarningFlashActive = false
+            }
+        }
+    }
+    val appliedBackgroundColor =
+        if (isWarningFlashActive) {
+            lerp(flashScreenBackgroundColor, onSurfaceColor, warningFlashProgress.value)
+        } else {
+            flashScreenBackgroundColor
+        }
+
+    val isSessionEndWarningActive =
+        uiState.sessionEndWarning &&
+            timerUiState.isActive &&
+            !timerUiState.isBreak &&
+            label.isCountdown &&
+            label.profile.workDuration > uiState.sessionEndWarningMinutes &&
+            timerUiState.displayTime <= uiState.sessionEndWarningMinutes.minutes.inWholeMilliseconds
+
     val actionBadgeItemCount = permissionState.count() + if (updateAvailable) 1 else 0
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -229,7 +270,7 @@ fun MainScreen(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .background(flashScreenBackgroundColor)
+                            .background(appliedBackgroundColor)
                             .windowInsetsPadding(WindowInsets.safeDrawing),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -258,6 +299,7 @@ fun MainScreen(
                         timerUiState = timerUiState,
                         timerStyle = timerStyle,
                         domainLabel = label,
+                        isSessionEndWarningActive = isSessionEndWarningActive,
                         onStart = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             coroutineScope.launch {

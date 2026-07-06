@@ -207,7 +207,7 @@ class IosNotificationHandler(
         updateNotificationAction(actionTitle)
 
         val soundData = if (startEvent.isFocus) workRingTone else breakRingTone
-        val notificationSound = resolveNotificationSound(soundData)
+        val notificationSound = resolveNotificationSound(soundData, log)
 
         val content =
             UNMutableNotificationContent().apply {
@@ -256,28 +256,31 @@ class IosNotificationHandler(
         log.v { "Cancelling notification, if any" }
         notificationCenter.removePendingNotificationRequestsWithIdentifiers(listOf(NOTIFICATION_ID))
     }
+}
 
-    private fun resolveNotificationSound(soundData: SoundData): UNNotificationSound? {
-        if (soundData.isSilent) return null
+internal fun resolveNotificationSound(
+    soundData: SoundData,
+    log: Logger,
+): UNNotificationSound? {
+    if (soundData.isSilent) return null
 
-        val fileName = soundData.uriString.substringAfterLast("/").trim()
-        if (fileName.isBlank()) return UNNotificationSound.defaultSound()
+    val fileName = soundData.uriString.substringAfterLast("/").trim()
+    if (fileName.isBlank()) return UNNotificationSound.defaultSound()
 
-        val name = fileName.substringBeforeLast(".")
-        val ext = if (fileName.contains(".")) fileName.substringAfterLast(".") else "wav"
+    val name = fileName.substringBeforeLast(".")
+    val ext = if (fileName.contains(".")) fileName.substringAfterLast(".") else "wav"
 
-        // Try bundle root first, then Sounds/ (folder reference case)
-        val url: NSURL? =
-            NSBundle.mainBundle.URLForResource(name, withExtension = ext)
-                ?: NSBundle.mainBundle.URLForResource(name, withExtension = ext, subdirectory = IOS_NOTIFICATION_SOUNDS_SUBDIR)
+    // Try bundle root first, then Sounds/ (folder reference case)
+    val url: NSURL? =
+        NSBundle.mainBundle.URLForResource(name, withExtension = ext)
+            ?: NSBundle.mainBundle.URLForResource(name, withExtension = ext, subdirectory = IOS_NOTIFICATION_SOUNDS_SUBDIR)
 
-        if (url == null) {
-            log.w { "Notification sound not found in bundle: $fileName. Falling back to default sound." }
-            return UNNotificationSound.defaultSound()
-        }
-
-        // Note: soundNamed() expects a file available to the notification system (bundle root or Library/Sounds).
-        // We still do the URL existence check above to detect stale/invalid URIs and fall back safely.
-        return UNNotificationSound.soundNamed(fileName)
+    if (url == null) {
+        log.w { "Notification sound not found in bundle: $fileName. Falling back to default sound." }
+        return UNNotificationSound.defaultSound()
     }
+
+    // Note: soundNamed() expects a file available to the notification system (bundle root or Library/Sounds).
+    // We still do the URL existence check above to detect stale/invalid URIs and fall back safely.
+    return UNNotificationSound.soundNamed(fileName)
 }

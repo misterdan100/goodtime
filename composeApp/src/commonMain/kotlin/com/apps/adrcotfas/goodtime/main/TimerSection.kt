@@ -73,6 +73,7 @@ import com.apps.adrcotfas.goodtime.main.dialcontrol.DialControlState
 import com.apps.adrcotfas.goodtime.main.dialcontrol.DialRegion
 import com.apps.adrcotfas.goodtime.ui.ApplicationTheme
 import com.apps.adrcotfas.goodtime.ui.breakColor
+import com.apps.adrcotfas.goodtime.ui.endOfSessionWarningColor
 import com.apps.adrcotfas.goodtime.ui.getLabelColor
 import com.apps.adrcotfas.goodtime.ui.hideUnless
 import com.apps.adrcotfas.goodtime.ui.timerFontRobotoMap
@@ -99,6 +100,7 @@ fun MainTimerView(
     onStart: () -> Unit,
     onToggle: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    isSessionEndWarningActive: Boolean = false,
 ) {
     val label = domainLabel.label
     val labelColorIndex = label.colorIndex
@@ -134,7 +136,12 @@ fun MainTimerView(
             isPaused = timerUiState.isPaused,
             timerStyle = timerStyle,
             millis = timerUiState.displayTime,
-            color = if (isBreak) breakColor else labelColor,
+            color =
+                when {
+                    isBreak -> breakColor
+                    isSessionEndWarningActive -> MaterialTheme.endOfSessionWarningColor()
+                    else -> labelColor
+                },
             onClick = {
                 onToggle?.let {
                     if (!timerUiState.isActive) {

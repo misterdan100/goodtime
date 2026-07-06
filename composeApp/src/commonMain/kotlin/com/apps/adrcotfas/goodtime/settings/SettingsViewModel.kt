@@ -48,6 +48,7 @@ data class SettingsUiState(
     val showWorkdayStartPicker: Boolean = false,
     val showSelectWorkSoundPicker: Boolean = false,
     val showSelectBreakSoundPicker: Boolean = false,
+    val showSelectSessionEndWarningSoundPicker: Boolean = false,
     val notificationSoundCandidate: String? = null,
     val is24HourFormat: Boolean = true,
 )
@@ -258,6 +259,24 @@ class SettingsViewModel(
         }
     }
 
+    fun setSessionEndWarning(enable: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setSessionEndWarning(enable)
+        }
+    }
+
+    fun setSessionEndWarningMinutes(minutes: Int) {
+        viewModelScope.launch {
+            settingsRepository.setSessionEndWarningMinutes(minutes)
+        }
+    }
+
+    fun setSessionEndWarningSound(ringtone: String) {
+        viewModelScope.launch {
+            settingsRepository.setSessionEndWarningSound(ringtone)
+        }
+    }
+
     fun setOverrideSoundProfile(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setOverrideSoundProfile(enabled)
@@ -274,6 +293,14 @@ class SettingsViewModel(
 
     fun setShowSelectBreakSoundPicker(show: Boolean) {
         _uiState.value = _uiState.value.copy(showSelectBreakSoundPicker = show)
+    }
+
+    fun setShowSelectSessionEndWarningSoundPicker(show: Boolean) {
+        _uiState.value =
+            _uiState.value.copy(
+                showSelectSessionEndWarningSoundPicker = show,
+                notificationSoundCandidate = null,
+            )
     }
 
     fun setNotificationSoundCandidate(uri: String) {
