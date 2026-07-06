@@ -13,6 +13,14 @@ Goodtime is an indie open-source minimalist productivity timer - lightweight, ad
 
 Perfect for students needing a study timer, professionals seeking deep work and time management, and anyone fighting distractions and procrastination.
 
+## About this fork
+
+Personal fork of [adrcotfas/goodtime](https://github.com/adrcotfas/goodtime) adding one feature (v3.2.0):
+
+- ⏰ **Session ending warning** (Settings > Notifications, off by default): get warned 1–5 minutes before the end of a countdown focus session with a dedicated warning sound, a double screen flash (when the screen flash setting is enabled) and the countdown text switching to a muted dark red until the session ends. It never fires for breaks or the count-up flow timer, and it is cancelled or rescheduled on pause/resume, skip, reset, +1 minute and setting changes. On iOS the warning is also delivered as a scheduled local notification while the app is in the background.
+
+The iOS `.ipa` is built unsigned with the "Build iOS IPA" GitHub Actions workflow (manual trigger from the Actions tab) and sideloaded with AltStore.
+
 <p align="center">
   <img src="docs/assets/screenshots/1.png" width="200">
   <img src="docs/assets/screenshots/2.png" width="200">
