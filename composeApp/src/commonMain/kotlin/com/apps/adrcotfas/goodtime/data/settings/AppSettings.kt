@@ -37,6 +37,12 @@ data class AppSettings(
     val workFinishedSound: String = "",
     /** The name/URI of the sound file or empty for default*/
     val breakFinishedSound: String = "",
+    /** Whether to warn the user before the end of a countdown focus session */
+    val sessionEndWarning: Boolean = false,
+    /** How many minutes before the end of a focus session to warn the user */
+    val sessionEndWarningMinutes: Int = 1,
+    /** The name/URI of the sound file or empty for default*/
+    val sessionEndWarningSound: String = "",
     val overrideSoundProfile: Boolean = false,
     val userSounds: Set<SoundData> = emptySet(),
     val vibrationStrength: Int = 3,
