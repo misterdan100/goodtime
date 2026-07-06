@@ -26,6 +26,7 @@ import com.apps.adrcotfas.goodtime.bl.IOS_NOTIFICATION_HANDLER
 import com.apps.adrcotfas.goodtime.bl.IOS_TIMER_STATE_PERSISTENCE
 import com.apps.adrcotfas.goodtime.bl.IosLiveActivityListener
 import com.apps.adrcotfas.goodtime.bl.IosNotificationHandler
+import com.apps.adrcotfas.goodtime.bl.IosSessionEndWarningNotifier
 import com.apps.adrcotfas.goodtime.bl.IosTimerStatePersistenceListener
 import com.apps.adrcotfas.goodtime.bl.LiveActivityBridge
 import com.apps.adrcotfas.goodtime.bl.SOUND_AND_VIBRATION_PLAYER
@@ -34,6 +35,7 @@ import com.apps.adrcotfas.goodtime.bl.TimerStateRestoration
 import com.apps.adrcotfas.goodtime.bl.notifications.IosSoundPlayer
 import com.apps.adrcotfas.goodtime.bl.notifications.IosTorchManager
 import com.apps.adrcotfas.goodtime.bl.notifications.IosVibrationPlayer
+import com.apps.adrcotfas.goodtime.bl.notifications.SessionEndWarningNotifier
 import com.apps.adrcotfas.goodtime.bl.notifications.SoundPlayer
 import com.apps.adrcotfas.goodtime.bl.notifications.SoundVibrationAndTorchPlayer
 import com.apps.adrcotfas.goodtime.bl.notifications.TorchManager
@@ -130,6 +132,13 @@ actual val platformModule: Module =
                 settingsRepo = get<SettingsRepository>(),
                 coroutineScope = get<CoroutineScope>(named(MAIN_SCOPE)),
                 log = getWith("IosNotificationHandler"),
+            )
+        }
+
+        single<SessionEndWarningNotifier> {
+            IosSessionEndWarningNotifier(
+                timeProvider = get<TimeProvider>(),
+                log = getWith("SessionEndWarningNotifier"),
             )
         }
 
